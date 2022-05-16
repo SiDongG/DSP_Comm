@@ -104,9 +104,13 @@ def calcR_method2(r, d_set, R0):
     return R
 R1 = calcR_method1(r, d_set)
 R2 = calcR_method2(r, d_set, R1[0])
+plt.plot(d_set, abs(R1))
+plt.show()
 
 #Calculate Metric M(d)
 M = abs(P1)**2/R1**2
+plt.plot(d_set,M)
+plt.show()
 plt.plot(abs(r), label='$r[n]$', color='cyan')
 plt.plot(M, label='$M(d)$')
 plt.show()
