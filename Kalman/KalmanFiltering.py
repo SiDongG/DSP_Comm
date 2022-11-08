@@ -7,6 +7,7 @@ np.random.seed(1992)
 NumSteps = 201
 TimeScale = np.linspace(0,10,NumSteps)
 DeltaSim = np.diff(TimeScale)[0]
+#DeltaSim = 0.1
 SigmaInput = 1
 SigmaNoise = 0.5
 F = np.array([[1,0,DeltaSim,0],[0,1,0,DeltaSim],[0,0,1,0],[0,0,0,1]])
@@ -27,23 +28,29 @@ for t in np.arange(1,NumSteps):
 StateX1 = State[0,:]
 StateX2 = State[1,:]
 DownSampling = 2
-NoisyMeasurements2 = NoisyMeasurements[:,::DownSampling]
+NoisyMeasurements = NoisyMeasurements[:,::DownSampling]
 MeasurementY1 = NoisyMeasurements[0,:]
 MeasurementY2 = NoisyMeasurements[1,:]
 
+Delta = 0.1
+Fk = np.array([[1,0,Delta,0],[0,1,0,Delta],[0,0,1,0],[0,0,0,1]])
+Qk = SigmaInput**2 * np.array([[Delta**3/3,0,Delta**2/2,0],
+[0,Delta**3/3,0,Delta**2/2],
+[Delta**2/2,0,Delta,0],
+[0,Delta**2/2,0,Delta]])
+NumDown = 101
 ## Construct Kalman Filter 
 # Initialization
-KalmanMeasurements = np.zeros((4,NumSteps))
-KalmanP = np.zeros((4,4,NumSteps))
-Innovation = np.zeros((2,NumSteps))
-KalmanF = np.zeros((4,2,NumSteps))
-ConditionalX = np.zeros((4,NumSteps))
-ConditionalP = np.zeros((4,4,NumSteps))
+KalmanMeasurements = np.zeros((4,NumDown))
+KalmanP = np.zeros((4,4,NumDown))
+Innovation = np.zeros((2,NumDown))
+KalmanF = np.zeros((4,2,NumDown))
+ConditionalX = np.zeros((4,NumDown))
+ConditionalP = np.zeros((4,4,NumDown))
 
-print(ConditionalP.shape)
 ConditionalP[:,:,0]=np.identity(4)
 
-for t in np.arange(0,NumSteps-1):
+for t in np.arange(0,NumDown-1):
     # Compute Innvoation
     Innovation[:,t] = NoisyMeasurements[:,t]-H@ConditionalX[:,t]
     KalmanF[:,:,t] = ConditionalP[:,:,t]@np.transpose(H)@np.linalg.inv(H@ConditionalP[:,:,t]@np.transpose(H)+R)
@@ -51,8 +58,8 @@ for t in np.arange(0,NumSteps-1):
     KalmanMeasurements[:,t] = ConditionalX[:,t]+KalmanF[:,:,t]@Innovation[:,t]
     KalmanP[:,:,t] = ConditionalP[:,:,t]-KalmanF[:,:,t]@H@ConditionalP[:,:,t]
     # Prediction on Conditional X and P
-    ConditionalX[:,t+1]=F@KalmanMeasurements[:,t]
-    ConditionalP[:,:,t+1]=F@KalmanP[:,:,t]@np.transpose(F)+Q
+    ConditionalX[:,t+1]=Fk@KalmanMeasurements[:,t]
+    ConditionalP[:,:,t+1]=Fk@KalmanP[:,:,t]@np.transpose(Fk)+Qk
 
 Kalman1=KalmanMeasurements[0,0:-1]
 Kalman2=KalmanMeasurements[1,0:-1]
@@ -68,12 +75,13 @@ plt.xlabel('x1 coordinates');plt.ylabel('x2 coordinates')
 plt.grid(True)
 plt.show()
 
+print(State.shape)
 ## Calculate Measurement rms
 rms = 0
 rmsK = 0
-for t in np.arange(0,NumSteps-2):
-    rms = rms + (StateX1[t]-MeasurementY1[t])**2+(StateX2[t]-MeasurementY2[t])**2
-    rmsK = rmsK + (StateX1[t]-Kalman1[t])**2+(StateX2[t]-Kalman2[t])**2
+for t in np.arange(0,NumDown-1):
+    rms = rms + (StateX1[2*t]-MeasurementY1[t])**2+(StateX2[2*t]-MeasurementY2[t])**2
+    rmsK = rmsK + (StateX1[2*t]-Kalman1[t])**2+(StateX2[2*t]-Kalman2[t])**2
 
 rms = math.sqrt(rms)
 rmsK = math.sqrt(rmsK)
